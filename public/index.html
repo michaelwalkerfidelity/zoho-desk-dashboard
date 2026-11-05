@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Desk Wallboard</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    :root {
+      --base-font-size: clamp(14px, 0.95vw, 24px);
+      --container-max-width: clamp(1400px, 85vw, 2900px);
+      --card-radius: clamp(8px, 0.6vw, 16px);
+      --badge-radius: clamp(16px, 1.2vw, 32px);
+    }
+
+    @media (min-width: 1921px) {
+      :root {
+        --base-font-size: clamp(18px, 1.0vw, 26px);
+      }
+    }
+
+    @media (min-width: 2561px) {
+      :root {
+        --base-font-size: clamp(26px, 1.25vw, 36px);
+        --container-max-width: clamp(2600px, 85vw, 3500px);
+      }
+    }
+
+    body.dual-mode {
+      --base-font-size: clamp(12px, 0.8vw, 20px);
+      --container-max-width: clamp(1400px, 94vw, 3600px);
+    }
+    @media (min-width: 1921px) {
+      body.dual-mode {
+        --base-font-size: clamp(14px, 0.85vw, 22px);
+      }
+    }
+    @media (min-width: 2561px) {
+      body.dual-mode {
+        --base-font-size: clamp(20px, 1.05vw, 30px);
+      }
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-size: var(--base-font-size);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .dashboard-wrapper {
+      max-width: var(--container-max-width);
+      height: 100vh;
+      margin: 0 auto;
+      padding: clamp(16px, 1.8vh, 48px) clamp(24px, 2.5vw, 64px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    body.dual-mode .dashboard-wrapper {
+      padding: clamp(14px, 1.6vh, 36px) clamp(20px, 1.8vw, 48px);
+    }
+
+    #ticker-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: clamp(4px, 0.35vh, 8px);
+      background: #e2e8f0;
+      z-index: 1000;
+    }
+    #ticker-bar {
+      height: 100%;
+      width: 100%;
+      background: #0284c7;
+      transition: width 0.1s linear;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: clamp(14px, 1.8vh, 36px);
+      padding-bottom: clamp(12px, 1.4vh, 28px);
+      border-bottom: clamp(2px, 0.15vw, 4px) solid #e2e8f0;
+      flex-shrink: 0;
+    }
+    body.dual-mode header {
+      margin-bottom: clamp(12px, 1.4vh, 24px);
+      padding-bottom: clamp(10px, 1.2vh, 18px);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: clamp(14px, 1.2vw, 32px);
+    }
+
+    .counter-box {
+      display: flex;
+      align-items: baseline;
+      gap: clamp(8px, 0.6vw, 16px);
+      background: #ffffff;
+      padding: clamp(6px, 0.8vh, 16px) clamp(16px, 1.2vw, 32px);
+      border-radius: var(--card-radius);
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+      flex-shrink: 0;
+    }
+    .count-num {
+      font-size: 2.2em;
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      color: #0284c7;
+      transition: color 0.3s ease;
+    }
+    .count-label {
+      font-size: 0.8em;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 700;
+      color: #64748b;
+    }
+    .counter-box.cleared {
+      background: #f0fdf4;
+      border-color: #86efac;
+    }
+    .counter-box.cleared .count-num {
+      color: #16a34a;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.6em;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #0f172a;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: clamp(8px, 0.6vw, 14px);
+      font-size: 0.85em;
+      font-weight: 600;
+      color: #64748b;
+      background: #ffffff;
+      padding: clamp(6px, 0.6vh, 12px) clamp(14px, 1vw, 24px);
+      border-radius: var(--badge-radius);
+      border: 1px solid #e2e8f0;
+    }
+    .pulse-dot {
+      width: clamp(8px, 0.5vw, 14px);
+      height: clamp(8px, 0.5vw, 14px);
+      background-color: #16a34a;
+      border-radius: 50%;
+      box-shadow: 0 0 8px rgba(22, 163, 74, 0.5);
+    }
+
+    .ticket-list {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow-y: scroll;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      min-height: 0;
+    }
+    .ticket-list::-webkit-scrollbar {
+      display: none;
+    }
+
+    .ticket-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-left: clamp(6px, 0.5vw, 14px) solid #0284c7;
+      border-radius: var(--card-radius);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+      flex-shrink: 0;
+    }
+    .ticket-card.high-priority {
+      border-left-color: #ea580c;
+    }
+    .ticket-card.is-overdue {
+      background: #fff1f2 !important;
+      border: 2px solid #f43f5e !important;
+      border-left: clamp(10px, 0.75vw, 20px) solid #e11d48 !important;
+      box-shadow: 0 4px 16px rgba(225, 29, 72, 0.14) !important;
+    }
+    .ticket-card.is-overdue .ticket-title {
+      color: #881337;
+    }
+    .ticket-card.is-overdue .ticket-time {
+      color: #be123c;
+    }
+
+    .ticket-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      flex: 1;
+      gap: 4px;
+    }
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: clamp(8px, 0.6vw, 16px);
+    }
+    .ticket-title {
+      font-weight: 700;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .overdue-beacon {
+      position: relative;
+      width: clamp(10px, 0.65vw, 18px);
+      height: clamp(10px, 0.65vw, 18px);
+      flex-shrink: 0;
+      display: inline-block;
+    }
+    .overdue-beacon-inner {
+      width: 100%;
+      height: 100%;
+      background: #e11d48;
+      border-radius: 50%;
+    }
+    .overdue-beacon-ping {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #f43f5e;
+      border-radius: 50%;
+      animation: beacon-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+      opacity: 0.75;
+    }
+    @keyframes beacon-ping {
+      75%, 100% {
+        transform: scale(2.2);
+        opacity: 0;
+      }
+    }
+
+    .ticket-meta {
+      display: flex;
+      gap: clamp(8px, 0.7vw, 16px);
+      flex-wrap: nowrap;
+      align-items: center;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .meta-tag {
+      background: #f1f5f9;
+      border-radius: clamp(4px, 0.35vw, 8px);
+      font-weight: 500;
+      color: #475569;
+      white-space: nowrap;
+      flex-shrink: 0;
+      padding: clamp(2px, 0.25vh, 6px) clamp(6px, 0.5vw, 12px);
+    }
+    .meta-tag.truncate-tag {
+      flex-shrink: 1;
+      max-width: clamp(140px, 16vw, 320px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .due-tag {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      font-weight: 600;
+    }
+    .due-tag.urgent-due {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1.5px solid #f87171;
+      font-weight: 700;
+    }
+    .ticket-time {
+      font-weight: 700;
+      color: #334155;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-left: clamp(12px, 1.2vw, 24px);
+    }
+
+    body:not(.dual-mode) .ticket-list.density-spacious { gap: clamp(12px, 1.8vh, 28px); }
+    body:not(.dual-mode) .density-spacious .ticket-card { padding: clamp(18px, 2.2vh, 42px) clamp(22px, 1.8vw, 44px); }
+    body:not(.dual-mode) .density-spacious .ticket-title { font-size: 1.3em; }
+
+    body:not(.dual-mode) .ticket-list.density-standard { gap: clamp(8px, 1.2vh, 18px); }
+    body:not(.dual-mode) .density-standard .ticket-card { padding: clamp(12px, 1.4vh, 24px) clamp(16px, 1.2vw, 32px); }
+    body:not(.dual-mode) .density-standard .ticket-title { font-size: 1.12em; }
+
+    body:not(.dual-mode) .ticket-list.density-compact { gap: clamp(5px, 0.75vh, 12px); }
+    body:not(.dual-mode) .density-compact .ticket-card { padding: clamp(6px, 0.9vh, 16px) clamp(12px, 0.9vw, 22px); }
+    body:not(.dual-mode) .density-compact .ticket-title { font-size: 0.98em; }
+
+    .queues-grid {
+      display: none;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(16px, 1.8vw, 40px);
+      flex: 1;
+      min-height: 0;
+    }
+    body.dual-mode .queues-grid {
+      display: grid;
+    }
+    body.dual-mode #singleContainer {
+      display: none;
+    }
+    body.dual-mode .queue-column {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--card-radius);
+      padding: clamp(12px, 1.4vh, 24px) clamp(14px, 1.2vw, 24px);
+    }
+    body.dual-mode .queue-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: clamp(10px, 1.2vh, 18px);
+      padding-bottom: clamp(8px, 1vh, 14px);
+      border-bottom: 2px solid #e2e8f0;
+      flex-shrink: 0;
+    }
+    body.dual-mode .queue-header-left {
+      display: flex;
+      align-items: center;
+      gap: clamp(10px, 0.9vw, 20px);
+      min-width: 0;
+    }
+    body.dual-mode .queue-title {
+      margin: 0;
+      font-size: 1.3em;
+      font-weight: 800;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    body.dual-mode .ticket-list {
+      gap: clamp(8px, 1vh, 14px);
+    }
+    body.dual-mode .ticket-card {
+      padding: clamp(10px, 1.2vh, 18px) clamp(12px, 1vw, 20px);
+    }
+    body.dual-mode .ticket-title {
+      font-size: 1.05em;
+    }
+    body.dual-mode .meta-tag.truncate-tag {
+      max-width: clamp(100px, 10vw, 200px);
+    }
+
+    .empty-hero {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(30px, 6vh, 90px) 20px;
+      background: #ffffff;
+      border: 2px dashed #cbd5e1;
+      border-radius: var(--card-radius);
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+    }
+    .empty-icon-ring {
+      width: clamp(56px, 5vw, 96px);
+      height: clamp(56px, 5vw, 96px);
+      background: #f0fdf4;
+      border: clamp(2px, 0.2vw, 4px) solid #86efac;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: clamp(12px, 1.8vh, 24px);
+      box-shadow: 0 0 18px rgba(134, 239, 172, 0.35);
+    }
+    .check-icon {
+      width: 52%;
+      height: 52%;
+      color: #16a34a;
+    }
+    .empty-title {
+      font-size: 1.5em;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+    .empty-subtext {
+      font-size: 0.95em;
+      color: #64748b;
+      max-width: 480px;
+      line-height: 1.45;
+    }
+
+    #camera {
+      position: fixed;
+      bottom: clamp(16px, 2vh, 48px);
+      right: clamp(24px, 2vw, 56px);
+      width: clamp(380px, 25vw, 850px);
+      aspect-ratio: 16 / 9;
+      height: auto;
+      border: 2px solid #cbd5e1;
+      border-radius: var(--card-radius);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      z-index: 999;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="ticker-container">
+    <div id="ticker-bar"></div>
+  </div>
+
+  <div class="dashboard-wrapper">
+    <header>
+      <div class="header-left" id="singleHeaderLeft">
+        <div id="counterBoxSingle" class="counter-box">
+          <span id="ticketCountSingle" class="count-num">0</span>
+          <span id="ticketCountLabelSingle" class="count-label">Tickets</span>
+        </div>
+        <h1 id="queueTitleSingle">Loading Queue...</h1>
+      </div>
+
+      <h1 class="board-title" id="dualHeaderTitle" style="display: none;">Support Operations</h1>
+
+      <div class="status-badge">
+        <div class="pulse-dot"></div>
+        <span id="refreshCountdown">Refreshing in 60s</span>
+      </div>
+    </header>
+
+    <div id="singleContainer" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+      <div id="ticketsSingle" class="ticket-list density-spacious"></div>
+    </div>
+
+    <div class="queues-grid" id="dualContainer">
+      <div class="queue-column">
+        <div class="queue-header">
+          <div class="queue-header-left">
+            <div id="counterBox1" class="counter-box">
+              <span id="ticketCount1" class="count-num">0</span>
+              <span id="ticketCountLabel1" class="count-label">Tickets</span>
+            </div>
+            <h2 id="queueTitle1" class="queue-title">Queue 1</h2>
+          </div>
+        </div>
+        <div id="tickets1" class="ticket-list"></div>
+      </div>
+
+      <div class="queue-column">
+        <div class="queue-header">
+          <div class="queue-header-left">
+            <div id="counterBox2" class="counter-box">
+              <span id="ticketCount2" class="count-num">0</span>
+              <span id="ticketCountLabel2" class="count-label">Tickets</span>
+            </div>
+            <h2 id="queueTitle2" class="queue-title">Queue 2</h2>
+          </div>
+        </div>
+        <div id="tickets2" class="ticket-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <iframe 
+    id="camera" 
+    src="http://10.10.10.108:1984/stream.html?src=frontdoorcam&mode=webrtc&retry=1" 
+    title="Camera Feed"
+    frameborder="0" 
+    allow="autoplay"
+    style="display: none;">
+  </iframe>
+
+  <script>
+    const REFRESH_INTERVAL_SEC = 60;
+    const REFRESH_MS = REFRESH_INTERVAL_SEC * 1000;
+
+    const params = new URLSearchParams(window.location.search);
+    const viewIdSingle = params.get('viewId') || '';
+    const viewId1 = params.get('viewId1') || '';
+    const viewId2 = params.get('viewId2') || '';
+    const titleParam = params.get('title');
+    const title1Param = params.get('title1');
+    const title2Param = params.get('title2');
+    const showCamera = params.get('camera') === 'true';
+
+    const isDualMode = Boolean(viewId2);
+
+    if (showCamera) {
+      document.getElementById('camera').style.display = 'block';
+    }
+
+    if (isDualMode) {
+      document.body.classList.add('dual-mode');
+      document.getElementById('singleHeaderLeft').style.display = 'none';
+      document.getElementById('dualHeaderTitle').style.display = 'block';
+      if (titleParam) {
+        document.getElementById('dualHeaderTitle').innerText = titleParam;
+      }
+    }
+
+    let lastFetchTime = Date.now();
+    let isRefreshing = false;
+
+    function createScroller(containerId) {
+      let scrollAnimId = null;
+      let scrollState = 'idle';
+      let stateStartTime = 0;
+      let currentPos = 0;
+      const SPEED = 26;
+      const PAUSE = 3500;
+
+      function stop() {
+        if (scrollAnimId) {
+          cancelAnimationFrame(scrollAnimId);
+          scrollAnimId = null;
+        }
+        scrollState = 'idle';
+      }
+
+      function init() {
+        stop();
+        const el = document.getElementById(containerId);
+        if (!el) return;
+
+        const max = el.scrollHeight - el.clientHeight;
+        if (max <= 10) {
+          el.scrollTop = 0;
+          return;
+        }
+
+        scrollState = 'pause_top';
+        stateStartTime = performance.now();
+        currentPos = el.scrollTop || 0;
+
+        let lastTime = performance.now();
+
+        function step(now) {
+          const deltaSec = (now - lastTime) / 1000;
+          lastTime = now;
+          const maxNow = el.scrollHeight - el.clientHeight;
+
+          if (maxNow <= 10) {
+            stop();
+            el.scrollTop = 0;
+            return;
+          }
+
+          switch (scrollState) {
+            case 'pause_top':
+              if (now - stateStartTime >= PAUSE) scrollState = 'down';
+              break;
+            case 'down':
+              currentPos += SPEED * deltaSec;
+              if (currentPos >= maxNow) {
+                currentPos = maxNow;
+                scrollState = 'pause_bottom';
+                stateStartTime = now;
+              }
+              el.scrollTop = currentPos;
+              break;
+            case 'pause_bottom':
+              if (now - stateStartTime >= PAUSE) scrollState = 'up';
+              break;
+            case 'up':
+              currentPos -= SPEED * deltaSec;
+              if (currentPos <= 0) {
+                currentPos = 0;
+                scrollState = 'pause_top';
+                stateStartTime = now;
+              }
+              el.scrollTop = currentPos;
+              break;
+          }
+          scrollAnimId = requestAnimationFrame(step);
+        }
+        scrollAnimId = requestAnimationFrame(step);
+      }
+
+      return { init, stop };
+    }
+
+    const singleScroller = createScroller('ticketsSingle');
+    const scroller1 = createScroller('tickets1');
+    const scroller2 = createScroller('tickets2');
+
+    async function loadQueueTitle(viewId, manualTitle, titleElId, defaultName) {
+      if (manualTitle) {
+        document.getElementById(titleElId).innerText = manualTitle;
+        if (!isDualMode) document.title = `${manualTitle} — Desk Wallboard`;
+        return;
+      }
+      try {
+        const targetView = viewId || 'default';
+        const res = await fetch(`/api/views/${targetView}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.name) {
+            document.getElementById(titleElId).innerText = data.name;
+            if (!isDualMode) document.title = `${data.name} — Desk Wallboard`;
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Could not fetch queue name:', err);
+      }
+      document.getElementById(titleElId).innerText = defaultName;
+    }
+
+    function getContactName(ticket) {
+      if (!ticket) return 'Unknown';
+      const c = ticket.contact;
+      if (c) {
+        const fullName = [c.firstName, c.lastName].filter(Boolean).join(' ').trim();
+        if (fullName) return fullName;
+        if (c.name) return c.name;
+        if (c.email) return c.email;
+      }
+      return ticket.email || 'Unknown';
+    }
+
+    function getOwnerName(ticket) {
+      if (!ticket || !ticket.assignee) return null;
+      const a = ticket.assignee;
+      const fullName = [a.firstName, a.lastName].filter(Boolean).join(' ').trim();
+      const resolved = fullName || a.name || a.email;
+      if (!resolved || resolved.toLowerCase() === 'unassigned') return null;
+      return resolved;
+    }
+
+    function getAccountName(ticket) {
+      if (!ticket) return null;
+      if (ticket.account && (ticket.account.accountName || ticket.account.name)) {
+        return ticket.account.accountName || ticket.account.name;
+      }
+      if (ticket.contact?.account && (ticket.contact.account.accountName || ticket.contact.account.name)) {
+        return ticket.contact.account.accountName || ticket.contact.account.name;
+      }
+      if (ticket.contact?.accountName) return ticket.contact.accountName;
+      if (ticket.accountName) return ticket.accountName;
+      if (ticket.customer?.accountName) return ticket.customer.accountName;
+      return null;
+    }
+
+    function formatDueDate(dueDateStr, isOverdue) {
+      if (!dueDateStr) return null;
+      const due = new Date(dueDateStr);
+      if (isNaN(due.getTime())) return null;
+
+      const now = new Date();
+      const diffMs = due.getTime() - now.getTime();
+      const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+      const timeStr = due.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateStr = due.toLocaleDateString([], { day: 'numeric', month: 'short' });
+
+      if (isOverdue || diffMs < 0) {
+        const absHours = Math.abs(diffHours);
+        if (absHours < 24) return { text: `OVERDUE by ${absHours}h (${timeStr})`, isUrgent: true };
+        const absDays = Math.abs(diffDays);
+        return { text: `OVERDUE by ${absDays}d (${dateStr})`, isUrgent: true };
+      }
+      if (diffHours >= 0 && diffHours <= 4) return { text: `Due in ${diffHours}h (${timeStr})`, isUrgent: true };
+      if (due.toDateString() === now.toDateString()) return { text: `Due today at ${timeStr}`, isUrgent: false };
+      if (diffDays === 1) return { text: `Due tomorrow at ${timeStr}`, isUrgent: false };
+      return { text: `Due ${dateStr} ${timeStr}`, isUrgent: false };
+    }
+
+    const renderCache = {};
+
+    function renderQueueContainer(tickets, containerId, countId, countLabelId, boxId, scroller) {
+      const container = document.getElementById(containerId);
+      const countEl = document.getElementById(countId);
+      const countLabel = document.getElementById(countLabelId);
+      const box = document.getElementById(boxId);
+
+      const count = tickets ? tickets.length : 0;
+      countEl.innerText = count;
+      countLabel.innerText = count === 1 ? 'Ticket' : 'Tickets';
+
+      if (!isDualMode) {
+        container.classList.remove('density-spacious', 'density-standard', 'density-compact');
+        if (count <= 5) container.classList.add('density-spacious');
+        else if (count <= 10) container.classList.add('density-standard');
+        else container.classList.add('density-compact');
+      }
+
+      if (count === 0) {
+        box.classList.add('cleared');
+        scroller.stop();
+        container.scrollTop = 0;
+        container.innerHTML = `
+          <div class="empty-hero">
+            <div class="empty-icon-ring">
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <div class="empty-title">All Caught Up!</div>
+            <div class="empty-subtext">0 pending tickets in this queue. Great job!</div>
+          </div>
+        `;
+        renderCache[containerId] = 'empty';
+        return;
+      }
+
+      box.classList.remove('cleared');
+
+      const newHtml = tickets.map(t => {
+        const isUrgent = t.priority === 'High' || t.priority === 'Urgent';
+        const hasPassedDue = t.dueDate ? (new Date(t.dueDate).getTime() < Date.now()) : false;
+        const isOverdue = t.isOverdue === true || hasPassedDue;
+        const dueInfo = formatDueDate(t.dueDate, isOverdue);
+        const ownerName = getOwnerName(t);
+        const accountName = getAccountName(t);
+
+        let cardClass = 'ticket-card';
+        if (isOverdue) cardClass += ' is-overdue';
+        else if (isUrgent) cardClass += ' high-priority';
+
+        return `
+          <div class="${cardClass}">
+            <div class="ticket-info">
+              <div class="title-row">
+                ${isOverdue ? `
+                  <span class="overdue-beacon" title="SLA Breach">
+                    <span class="overdue-beacon-ping"></span>
+                    <span class="overdue-beacon-inner"></span>
+                  </span>
+                ` : ''}
+                <div class="ticket-title" title="${escapeHtml(t.subject)}">#${t.ticketNumber} — ${escapeHtml(t.subject)}</div>
+              </div>
+              <div class="ticket-meta">
+                ${ownerName ? `<span class="meta-tag">Owner: <strong>${escapeHtml(ownerName)}</strong></span>` : ''}
+                ${accountName ? `<span class="meta-tag truncate-tag" title="${escapeHtml(accountName)}">Account: <strong>${escapeHtml(accountName)}</strong></span>` : ''}
+                <span class="meta-tag truncate-tag" title="${escapeHtml(getContactName(t))}">Contact: <strong>${escapeHtml(getContactName(t))}</strong></span>
+                <span class="meta-tag">Status: <strong>${escapeHtml(t.status)}</strong></span>
+                <span class="meta-tag">Priority: <strong>${escapeHtml(t.priority || 'Normal')}</strong></span>
+                ${dueInfo ? `<span class="meta-tag due-tag ${dueInfo.isUrgent ? 'urgent-due' : ''}">🕒 ${escapeHtml(dueInfo.text)}</span>` : ''}
+              </div>
+            </div>
+            <div class="ticket-time">${new Date(t.createdTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+          </div>
+        `;
+      }).join('');
+
+      if (renderCache[containerId] === newHtml) {
+        return;
+      }
+      renderCache[containerId] = newHtml;
+
+      container.innerHTML = newHtml;
+
+      requestAnimationFrame(() => {
+        scroller.init();
+      });
+    }
+
+    async function fetchQueue(viewId) {
+      try {
+        const query = viewId ? `?viewId=${encodeURIComponent(viewId)}` : '';
+        const res = await fetch(`/api/tickets${query}`);
+        if (!res.ok) throw new Error('API fetch failed');
+        return await res.json();
+      } catch (err) {
+        console.error('Error fetching tickets for view:', viewId, err);
+        return [];
+      }
+    }
+
+    async function refreshDashboard() {
+      if (isRefreshing) return;
+      isRefreshing = true;
+
+      lastFetchTime = Date.now();
+
+      try {
+        if (isDualMode) {
+          const [t1, t2] = await Promise.all([
+            fetchQueue(viewId1 || viewIdSingle),
+            fetchQueue(viewId2)
+          ]);
+          renderQueueContainer(t1, 'tickets1', 'ticketCount1', 'ticketCountLabel1', 'counterBox1', scroller1);
+          renderQueueContainer(t2, 'tickets2', 'ticketCount2', 'ticketCountLabel2', 'counterBox2', scroller2);
+        } else {
+          const tickets = await fetchQueue(viewIdSingle);
+          renderQueueContainer(tickets, 'ticketsSingle', 'ticketCountSingle', 'ticketCountLabelSingle', 'counterBoxSingle', singleScroller);
+        }
+      } catch (err) {
+        console.error('Error refreshing dashboard:', err);
+        document.getElementById('refreshCountdown').innerText = 'Retrying...';
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    setInterval(() => {
+      const elapsed = Date.now() - lastFetchTime;
+      const remainingSec = Math.max(0, Math.ceil((REFRESH_MS - elapsed) / 1000));
+      const percentageLeft = Math.max(0, 100 - (elapsed / REFRESH_MS) * 100);
+
+      document.getElementById('ticker-bar').style.width = `${percentageLeft}%`;
+      document.getElementById('refreshCountdown').innerText = `Refreshing in ${remainingSec}s`;
+
+      if (elapsed >= REFRESH_MS && !isRefreshing) {
+        refreshDashboard();
+      }
+    }, 100);
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      }[tag] || tag));
+    }
+
+    if (isDualMode) {
+      loadQueueTitle(viewId1 || viewIdSingle, title1Param, 'queueTitle1', 'Queue 1');
+      loadQueueTitle(viewId2, title2Param, 'queueTitle2', 'Queue 2');
+    } else {
+      loadQueueTitle(viewIdSingle, titleParam, 'queueTitleSingle', 'Support Queue');
+    }
+
+    const startupJitter = Math.floor(Math.random() * 4000);
+    setTimeout(() => {
+      refreshDashboard();
+    }, startupJitter);
+  </script>
+</body>
+</html>
