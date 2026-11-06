@@ -6,6 +6,18 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+function getJulianDay(date = new Date()) {
+  const startOfYear = new Date(Date.UTC(date.getFullYear(), 0, 0));
+  const diffMs = date.getTime() - startOfYear.getTime();
+  const msPerDay = 1000 * 60 * 60 * 24;
+  return Math.floor(diffMs / msPerDay) + 1;
+}
+
+function getUnlockCode(date = new Date()) {
+  const prefix = (process.env.CARD_MACHINE_UNLOCK_CODE_PREFIX || '8426').trim() || '8426';
+  return `${prefix}${getJulianDay(date)}`;
+}
+
 let cachedAccessToken = null;
 let tokenExpiresAt = 0;
 let refreshPromise = null;
@@ -53,6 +65,24 @@ async function getAccessToken() {
 
 // Serve static frontend assets
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/api/unlock-code', (req, res) => {
+  const code = getUnlockCode();
+  const date = new Date();
+  const formattedDate = date.toLocaleDateString(undefined, {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    code,
+    date: formattedDate,
+    julianDay: getJulianDay(date)
+  });
+});
 
 // Fetch view name metadata with dual lookup (direct + dynamic department sweep)
 app.get('/api/views/:viewId', async (req, res) => {
