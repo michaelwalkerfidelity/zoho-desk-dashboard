@@ -14,8 +14,8 @@ function getJulianDay(date = new Date()) {
 }
 
 function getUnlockCode(date = new Date()) {
-  const prefix = (process.env.CARD_MACHINE_UNLOCK_CODE_PREFIX || '8426').trim() || '8426';
-  return `${prefix}${getJulianDay(date)}`;
+  const day = String(getJulianDay(date)).padStart(3, '0');
+  return `8426${day}`;
 }
 
 let cachedAccessToken = null;
@@ -67,21 +67,14 @@ async function getAccessToken() {
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/unlock-code', (req, res) => {
-  const code = getUnlockCode();
-  const date = new Date();
-  const formattedDate = date.toLocaleDateString(undefined, {
-    weekday: 'short',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
+  if (!req.get('x-ms-client-principal')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
 
-  res.set('Cache-Control', 'no-store');
-  res.json({
-    code,
-    date: formattedDate,
-    julianDay: getJulianDay(date)
-  });
+  const code = getUnlockCode();
+  res.set('Cache-Control', 'no-store, private');
+  res.set('Pragma', 'no-cache');
+  res.json({ code });
 });
 
 // Fetch view name metadata with dual lookup (direct + dynamic department sweep)
